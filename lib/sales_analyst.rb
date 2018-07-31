@@ -223,6 +223,23 @@ class SalesAnalyst
     end
   end
 
+  def best_item_for_merchant(merchant_id)
+    merchant_invoices = @engine.invoices.find_all_by_merchant_id(merchant_id)
+    merchant_invoices.keep_if do |invoice|
+      invoice_paid_in_full?(invoice.id)
+    end
+    merchant_invoice_ids = merchant_invoices.map do |invoice|
+      invoice.id
+    end
+    merchant_invoice_items = all_invoice_items.find_all do |invoice_item|
+      merchant_invoice_ids.include?(invoice_item.invoice_id)
+    end
+    invoice_item = merchant_invoice_items.max_by do |invoice_item|
+      invoice_item.quantity * invoice_item.unit_price
+    end
+    @engine.items.find_by_id(invoice_item.item_id)
+  end
+
   private
 
   def standard_deviation(data_set, mean)

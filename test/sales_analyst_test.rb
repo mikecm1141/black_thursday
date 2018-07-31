@@ -191,4 +191,8 @@ class SalesAnalystTest < Minitest::Test
   def test_it_returns_most_sold_item_for_merchant
     assert_equal [@se.items.find_by_id(12)], @sa.most_sold_item_for_merchant(4)
   end
+
+  def test_it_returns_best_item_for_a_merchant
+    assert_equal @se.items.find_by_id(12), @sa.best_item_for_merchant(4)
+  end
 end
