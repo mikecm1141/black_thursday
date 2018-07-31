@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'bigdecimal'
-require 'pry'
 
 # Sales anaylst class
 class SalesAnalyst
@@ -192,24 +191,13 @@ class SalesAnalyst
   end
 
   def most_sold_item_for_merchant(merchant_id)
-    merchant_item_sales = Hash.new(0)
+    merchant_item_quantities = Hash.new(0)
     merchant_invoices = valid_merchant_invoices(merchant_id)
-    invoice_items = merchant_invoice_items(merchant_invoices)
-
-    invoice_items.each do |invoice_item|
-      merchant_item_sales[invoice_item.item_id] += invoice_item.quantity
+    merchant_invoice_items(merchant_invoices).each do |invoice_item|
+      merchant_item_quantities[invoice_item.item_id] += invoice_item.quantity
     end
-
-    threshold = merchant_item_sales.max_by do |_, value|
-      value
-    end
-    item_pairs = merchant_item_sales.select do |_, value|
-      value == threshold.last
-    end
-
-    item_pairs.map do |item_id, _|
-      @engine.items.find_by_id(item_id)
-    end
+    item_pairs = highest_quantity_items(merchant_item_quantities)
+    item_pairs.map { |item_id, _| @engine.items.find_by_id(item_id) }
   end
 
   def best_item_for_merchant(merchant_id)
@@ -228,6 +216,15 @@ class SalesAnalyst
       sum + (number_items - mean)**2
     end
     Math.sqrt(total_sum / (data_set.size - 1)).round(2).to_f
+  end
+
+  def highest_quantity_items(merchant_item_quantities)
+    threshold = merchant_item_quantities.max_by do |_, value|
+      value
+    end
+    merchant_item_quantities.select do |_, value|
+      value == threshold.last
+    end
   end
 
   def all_items
