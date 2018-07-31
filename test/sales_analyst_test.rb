@@ -183,4 +183,16 @@ class SalesAnalystTest < Minitest::Test
     expected = [@se.merchants.find_by_id(1), @se.merchants.find_by_id(4), @se.merchants.find_by_id(3), @se.merchants.find_by_id(6), @se.merchants.find_by_id(7)]
     assert_equal expected, @sa.merchants_with_only_one_item
   end
+
+  def test_it_returns_merchants_with_only_one_item_month
+    assert_equal [@se.merchants.find_by_id(6)], @sa.merchants_with_only_one_item_registered_in_month('February')
+  end
+
+  def test_it_returns_most_sold_item_for_merchant
+    assert_equal [@se.items.find_by_id(12)], @sa.most_sold_item_for_merchant(4)
+  end
+
+  def test_it_returns_best_item_for_a_merchant
+    assert_equal @se.items.find_by_id(12), @sa.best_item_for_merchant(4)
+  end
 end

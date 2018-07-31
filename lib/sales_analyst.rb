@@ -191,6 +191,55 @@ class SalesAnalyst
     end
   end
 
+  def merchants_with_only_one_item_registered_in_month(month)
+    merchants_with_only_one_item.keep_if do |merchant|
+      merchant.created_at.strftime('%B') == month
+    end
+  end
+
+  def most_sold_item_for_merchant(merchant_id)
+    merchant_item_sales = Hash.new(0)
+    merchant_invoices = @engine.invoices.find_all_by_merchant_id(merchant_id)
+    merchant_invoices.keep_if do |invoice|
+      invoice_paid_in_full?(invoice.id)
+    end
+    merchant_invoice_ids = merchant_invoices.map do |invoice|
+      invoice.id
+    end
+    merchant_invoice_items = all_invoice_items.find_all do |invoice_item|
+      merchant_invoice_ids.include?(invoice_item.invoice_id)
+    end
+    merchant_invoice_items.each do |invoice_item|
+      merchant_item_sales[invoice_item.item_id] += invoice_item.quantity
+    end
+    threshold = merchant_item_sales.max_by do |_, value|
+      value
+    end
+    item_pairs = merchant_item_sales.select do |_, value|
+      value == threshold.last
+    end
+    item_pairs.map do |item_id, _|
+      @engine.items.find_by_id(item_id)
+    end
+  end
+
+  def best_item_for_merchant(merchant_id)
+    merchant_invoices = @engine.invoices.find_all_by_merchant_id(merchant_id)
+    merchant_invoices.keep_if do |invoice|
+      invoice_paid_in_full?(invoice.id)
+    end
+    merchant_invoice_ids = merchant_invoices.map do |invoice|
+      invoice.id
+    end
+    merchant_invoice_items = all_invoice_items.find_all do |invoice_item|
+      merchant_invoice_ids.include?(invoice_item.invoice_id)
+    end
+    invoice_item = merchant_invoice_items.max_by do |invoice_item|
+      invoice_item.quantity * invoice_item.unit_price
+    end
+    @engine.items.find_by_id(invoice_item.item_id)
+  end
+
   private
 
   def standard_deviation(data_set, mean)
@@ -210,6 +259,10 @@ class SalesAnalyst
 
   def all_invoices
     @engine.invoices.all
+  end
+
+  def all_invoice_items
+    @engine.invoice_items.all
   end
 
   def all_prices
