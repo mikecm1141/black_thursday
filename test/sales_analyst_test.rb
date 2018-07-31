@@ -183,4 +183,8 @@ class SalesAnalystTest < Minitest::Test
     expected = [@se.merchants.find_by_id(1), @se.merchants.find_by_id(4), @se.merchants.find_by_id(3), @se.merchants.find_by_id(6), @se.merchants.find_by_id(7)]
     assert_equal expected, @sa.merchants_with_only_one_item
   end
+
+  def test_it_returns_merchants_with_only_one_item_month
+    assert_equal [], @sa.merchants_with_only_one_item_registered_in_month('August')
+  end
 end
