@@ -185,6 +185,10 @@ class SalesAnalystTest < Minitest::Test
   end
 
   def test_it_returns_merchants_with_only_one_item_month
-    assert_equal [], @sa.merchants_with_only_one_item_registered_in_month('August')
+    assert_equal [@se.merchants.find_by_id(6)], @sa.merchants_with_only_one_item_registered_in_month('February')
+  end
+
+  def test_it_returns_most_sold_item_for_merchant
+    assert_equal [@se.items.find_by_id(12)], @sa.most_sold_item_for_merchant(4)
   end
 end
