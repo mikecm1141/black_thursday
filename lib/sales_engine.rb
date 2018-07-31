@@ -10,7 +10,7 @@ require_relative './invoice_item_repository'
 require_relative './sales_analyst'
 
 class SalesEngine
-  def self.from_csv(filepaths) # Hash values are file paths
+  def self.from_csv(filepaths)
     csv_data = {}
     filepaths.each do |repo, filepath|
       csv_data[repo] = CSV.open(filepath, headers: true, header_converters: :symbol)

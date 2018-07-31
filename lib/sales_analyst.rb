@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'bigdecimal'
-require 'pry'
 
 # Sales anaylst class
 class SalesAnalyst
@@ -150,27 +149,6 @@ class SalesAnalyst
     end
   end
 
-  def revenue_by_merchant(merchant_id)
-    merchant_invoices = @engine.invoices.find_all_by_merchant_id(merchant_id)
-    valid_invoices = merchant_invoices.keep_if do |invoice|
-      invoice_paid_in_full?(invoice.id)
-    end
-    total = valid_invoices.inject(0) do |sum, invoice|
-      sum + invoice_total_float(invoice.id)
-    end
-    BigDecimal(total, total.to_s.size - 1)
-  end
-
-  def revenue_by_merchant_float(merchant_id)
-    merchant_invoices = @engine.invoices.find_all_by_merchant_id(merchant_id)
-    valid_invoices = merchant_invoices.keep_if do |invoice|
-      invoice_paid_in_full?(invoice.id)
-    end
-    valid_invoices.inject(0) do |sum, invoice|
-      sum + invoice_total_float(invoice.id)
-    end
-  end
-
   def merchants_with_pending_invoices
     all_merchants.find_all do |merchant|
       @engine.invoices.find_all_by_merchant_id(merchant.id).any? do |invoice|
@@ -197,45 +175,36 @@ class SalesAnalyst
     end
   end
 
-  def most_sold_item_for_merchant(merchant_id)
-    merchant_item_sales = Hash.new(0)
-    merchant_invoices = @engine.invoices.find_all_by_merchant_id(merchant_id)
-    merchant_invoices.keep_if do |invoice|
-      invoice_paid_in_full?(invoice.id)
+  def revenue_by_merchant(merchant_id)
+    merchant_invoices = valid_merchant_invoices(merchant_id)
+    total = merchant_invoices.inject(0) do |sum, invoice|
+      sum + invoice_total_float(invoice.id)
     end
-    merchant_invoice_ids = merchant_invoices.map do |invoice|
-      invoice.id
-    end
-    merchant_invoice_items = all_invoice_items.find_all do |invoice_item|
-      merchant_invoice_ids.include?(invoice_item.invoice_id)
-    end
-    merchant_invoice_items.each do |invoice_item|
-      merchant_item_sales[invoice_item.item_id] += invoice_item.quantity
-    end
-    threshold = merchant_item_sales.max_by do |_, value|
-      value
-    end
-    item_pairs = merchant_item_sales.select do |_, value|
-      value == threshold.last
-    end
-    item_pairs.map do |item_id, _|
-      @engine.items.find_by_id(item_id)
+    BigDecimal(total, total.to_s.size - 1)
+  end
+
+  def revenue_by_merchant_float(merchant_id)
+    merchant_invoices = valid_merchant_invoices(merchant_id)
+    merchant_invoices.inject(0) do |sum, invoice|
+      sum + invoice_total_float(invoice.id)
     end
   end
 
+  def most_sold_item_for_merchant(merchant_id)
+    merchant_item_quantities = Hash.new(0)
+    merchant_invoices = valid_merchant_invoices(merchant_id)
+    merchant_invoice_items(merchant_invoices).each do |invoice_item|
+      merchant_item_quantities[invoice_item.item_id] += invoice_item.quantity
+    end
+    item_pairs = highest_quantity_items(merchant_item_quantities)
+    item_pairs.map { |item_id, _| @engine.items.find_by_id(item_id) }
+  end
+
   def best_item_for_merchant(merchant_id)
-    merchant_invoices = @engine.invoices.find_all_by_merchant_id(merchant_id)
-    merchant_invoices.keep_if do |invoice|
-      invoice_paid_in_full?(invoice.id)
-    end
-    merchant_invoice_ids = merchant_invoices.map do |invoice|
-      invoice.id
-    end
-    merchant_invoice_items = all_invoice_items.find_all do |invoice_item|
-      merchant_invoice_ids.include?(invoice_item.invoice_id)
-    end
-    invoice_item = merchant_invoice_items.max_by do |invoice_item|
-      invoice_item.quantity * invoice_item.unit_price
+    merchant_invoices = valid_merchant_invoices(merchant_id)
+    invoice_items = merchant_invoice_items(merchant_invoices)
+    invoice_item = invoice_items.max_by do |invoice_item_obj|
+      invoice_item_obj.quantity * invoice_item_obj.unit_price
     end
     @engine.items.find_by_id(invoice_item.item_id)
   end
@@ -247,6 +216,15 @@ class SalesAnalyst
       sum + (number_items - mean)**2
     end
     Math.sqrt(total_sum / (data_set.size - 1)).round(2).to_f
+  end
+
+  def highest_quantity_items(merchant_item_quantities)
+    threshold = merchant_item_quantities.max_by do |_, value|
+      value
+    end
+    merchant_item_quantities.select do |_, value|
+      value == threshold.last
+    end
   end
 
   def all_items
@@ -296,6 +274,20 @@ class SalesAnalyst
   def count_invoices_per_day
     invoices_by_day.map do |_, invoice|
       invoice.count
+    end
+  end
+
+  def merchant_invoice_items(merchant_invoices)
+    merchant_invoice_ids = merchant_invoices.map(&:id)
+    all_invoice_items.find_all do |invoice_item|
+      merchant_invoice_ids.include?(invoice_item.invoice_id)
+    end
+  end
+
+  def valid_merchant_invoices(merchant_id)
+    merchant_invoices = @engine.invoices.find_all_by_merchant_id(merchant_id)
+    merchant_invoices.keep_if do |invoice|
+      invoice_paid_in_full?(invoice.id)
     end
   end
 end
